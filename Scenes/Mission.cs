@@ -7,206 +7,222 @@ using System.Collections.Generic;
 // AttackTest.cs's role (drive UnitState + WeaponData) but interactively.
 public partial class Mission : Node2D
 {
-    private const int GridWidth = 8;
-    private const int GridHeight = 8;
-    private const int TileSize = 64;
+	private const int GridWidth = 8;
+	private const int GridHeight = 8;
+	private const int TileSize = 64;
+	private const int TileBorderWidth = 2;
 
-    private static readonly Vector2I[] MoveDirections =
-    {
-        Vector2I.Up, Vector2I.Down, Vector2I.Left, Vector2I.Right,
-    };
+	private static readonly Color TileFillColor = new(0.18f, 0.2f, 0.24f);
+	private static readonly Color TileBorderColor = new(0.42f, 0.47f, 0.55f);
 
-    private TileMapLayer _grid;
-    private GridHighlight _highlight;
-    private Unit _playerUnit;
-    private Unit _enemyUnit;
-    private Label _victoryLabel;
-    private AStarGrid2D _astar;
+	private static readonly Vector2I[] MoveDirections =
+	{
+		Vector2I.Up, Vector2I.Down, Vector2I.Left, Vector2I.Right,
+	};
 
-    private Unit _selected;
-    private HashSet<Vector2I> _reachableCells = new();
+	private TileMapLayer _grid;
+	private GridHighlight _highlight;
+	private Unit _playerUnit;
+	private Unit _enemyUnit;
+	private Label _victoryLabel;
+	private AStarGrid2D _astar;
 
-    public override void _Ready()
-    {
-        _grid = GetNode<TileMapLayer>("Grid");
-        _highlight = GetNode<GridHighlight>("Highlight");
-        _playerUnit = GetNode<Unit>("Units/PlayerUnit");
-        _enemyUnit = GetNode<Unit>("Units/EnemyUnit");
-        _victoryLabel = GetNode<Label>("VictoryLabel");
+	private Unit _selected;
+	private HashSet<Vector2I> _reachableCells = new();
 
-        BuildTileSet();
-        BuildAstarGrid();
+	public override void _Ready()
+	{
+		_grid = GetNode<TileMapLayer>("Grid");
+		_highlight = GetNode<GridHighlight>("Highlight");
+		_playerUnit = GetNode<Unit>("Units/PlayerUnit");
+		_enemyUnit = GetNode<Unit>("Units/EnemyUnit");
+		_victoryLabel = GetNode<Label>("VictoryLabel");
 
-        _highlight.Grid = _grid;
-        _highlight.TileSize = TileSize;
+		BuildTileSet();
+		BuildAstarGrid();
 
-        _playerUnit.State = new UnitState { Name = CharacterNames.Protagonist };
-        _playerUnit.SetColor(new Color(0.25f, 0.5f, 1f));
-        PlaceUnit(_playerUnit, new Vector2I(1, 6));
+		_highlight.Grid = _grid;
+		_highlight.TileSize = TileSize;
 
-        _enemyUnit.State = new UnitState { Name = CharacterNames.TrainingDummy, Armor = ArmorType.Light };
-        _enemyUnit.SetColor(new Color(1f, 0.3f, 0.3f));
-        PlaceUnit(_enemyUnit, new Vector2I(6, 1));
+		_playerUnit.State = new UnitState { Name = CharacterNames.Protagonist };
+		_playerUnit.SetColor(new Color(0.25f, 0.5f, 1f));
+		PlaceUnit(_playerUnit, new Vector2I(1, 6));
 
-        _playerUnit.RefreshHpLabel();
-        _enemyUnit.RefreshHpLabel();
+		_enemyUnit.State = new UnitState { Name = CharacterNames.TrainingDummy, Armor = ArmorType.Light };
+		_enemyUnit.SetColor(new Color(1f, 0.3f, 0.3f));
+		PlaceUnit(_enemyUnit, new Vector2I(6, 1));
 
-        _victoryLabel.Visible = false;
-    }
+		_playerUnit.RefreshHpLabel();
+		_enemyUnit.RefreshHpLabel();
 
-    public override void _UnhandledInput(InputEvent @event)
-    {
-        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
-            HandleCellClick(_grid.LocalToMap(_grid.GetLocalMousePosition()));
-    }
+		_victoryLabel.Visible = false;
+	}
 
-    private void BuildTileSet()
-    {
-        var image = Image.CreateEmpty(TileSize, TileSize, false, Image.Format.Rgba8);
-        image.Fill(new Color(0.18f, 0.2f, 0.24f));
-        var texture = ImageTexture.CreateFromImage(image);
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
+			HandleCellClick(_grid.LocalToMap(_grid.GetLocalMousePosition()));
+	}
 
-        var source = new TileSetAtlasSource
-        {
-            Texture = texture,
-            TextureRegionSize = new Vector2I(TileSize, TileSize),
-        };
-        source.CreateTile(Vector2I.Zero);
+	private void BuildTileSet()
+	{
+		// The tile texture is drawn as a lighter border rectangle with the
+		// fill color painted inside it, so adjacent tiles read as a grid
+		// instead of one solid slab. Replaced by real art later.
+		var image = Image.CreateEmpty(TileSize, TileSize, false, Image.Format.Rgba8);
+		image.Fill(TileBorderColor);
+		image.FillRect(
+			new Rect2I(TileBorderWidth, TileBorderWidth, TileSize - TileBorderWidth * 2, TileSize - TileBorderWidth * 2),
+			TileFillColor);
+		var texture = ImageTexture.CreateFromImage(image);
 
-        var tileSet = new TileSet { TileSize = new Vector2I(TileSize, TileSize) };
-        tileSet.AddSource(source, 0);
-        _grid.TileSet = tileSet;
+		var source = new TileSetAtlasSource
+		{
+			Texture = texture,
+			TextureRegionSize = new Vector2I(TileSize, TileSize),
+		};
+		source.CreateTile(Vector2I.Zero);
 
-        for (int x = 0; x < GridWidth; x++)
-            for (int y = 0; y < GridHeight; y++)
-                _grid.SetCell(new Vector2I(x, y), 0, Vector2I.Zero);
-    }
+		var tileSet = new TileSet { TileSize = new Vector2I(TileSize, TileSize) };
+		tileSet.AddSource(source, 0);
+		_grid.TileSet = tileSet;
 
-    private void BuildAstarGrid()
-    {
-        _astar = new AStarGrid2D
-        {
-            Region = new Rect2I(0, 0, GridWidth, GridHeight),
-            CellSize = new Vector2(TileSize, TileSize),
-        };
-        _astar.Update();
-    }
+		for (int x = 0; x < GridWidth; x++)
+			for (int y = 0; y < GridHeight; y++)
+				_grid.SetCell(new Vector2I(x, y), 0, Vector2I.Zero);
+	}
 
-    private void PlaceUnit(Unit unit, Vector2I cell)
-    {
-        unit.PlaceAt(cell, _grid.MapToLocal(cell));
-    }
+	private void BuildAstarGrid()
+	{
+		_astar = new AStarGrid2D
+		{
+			Region = new Rect2I(0, 0, GridWidth, GridHeight),
+			CellSize = new Vector2(TileSize, TileSize),
+		};
+		_astar.Update();
+	}
 
-    private void HandleCellClick(Vector2I cell)
-    {
-        if (_selected == null)
-        {
-            if (cell == _playerUnit.Cell)
-                SelectUnit(_playerUnit);
-            return;
-        }
+	private void PlaceUnit(Unit unit, Vector2I cell)
+	{
+		unit.PlaceAt(cell, _grid.MapToLocal(cell));
+	}
 
-        if (cell == _selected.Cell)
-        {
-            Deselect();
-            return;
-        }
+	private void HandleCellClick(Vector2I cell)
+	{
+		// TEMP: input tracing while the click loop is being tuned. Remove
+		// once selection/movement feedback is confirmed on screen.
+		GD.Print($"[Mission] Clicked cell {cell} | player cell {_playerUnit.Cell} | match: {cell == _playerUnit.Cell} | selected: {_selected?.State.Name ?? "none"}");
 
-        if (cell == _enemyUnit.Cell)
-        {
-            TryAttack();
-            return;
-        }
+		if (_selected == null)
+		{
+			if (cell == _playerUnit.Cell)
+				SelectUnit(_playerUnit);
+			return;
+		}
 
-        if (_reachableCells.Contains(cell))
-        {
-            PlaceUnit(_selected, cell);
-            Deselect();
-        }
-    }
+		if (cell == _selected.Cell)
+		{
+			Deselect();
+			return;
+		}
 
-    private void SelectUnit(Unit unit)
-    {
-        _selected = unit;
-        _reachableCells = ComputeReachableCells(unit.Cell, unit.State.MoveRange);
-        _highlight.SetCells(_reachableCells);
-    }
+		if (cell == _enemyUnit.Cell)
+		{
+			TryAttack();
+			return;
+		}
 
-    private void Deselect()
-    {
-        _selected = null;
-        _reachableCells = new HashSet<Vector2I>();
-        _highlight.SetCells(_reachableCells);
-    }
+		if (_reachableCells.Contains(cell))
+		{
+			PlaceUnit(_selected, cell);
+			Deselect();
+		}
+	}
 
-    private void TryAttack()
-    {
-        if (_selected.Weapon == null)
-        {
-            GD.PrintErr($"{_selected.State.Name} has no Weapon assigned in the Inspector.");
-            return;
-        }
+	private void SelectUnit(Unit unit)
+	{
+		_selected = unit;
+		unit.SetSelected(true);
+		_reachableCells = ComputeReachableCells(unit.Cell, unit.State.MoveRange);
+		_highlight.SetCells(_reachableCells);
+	}
 
-        int distance = ChebyshevDistance(_selected.Cell, _enemyUnit.Cell);
-        if (distance > _selected.Weapon.Range)
-        {
-            GD.Print($"{_selected.State.Name} is out of range ({distance} > {_selected.Weapon.Range}).");
-            return;
-        }
+	private void Deselect()
+	{
+		_selected?.SetSelected(false);
+		_selected = null;
+		_reachableCells = new HashSet<Vector2I>();
+		_highlight.SetCells(_reachableCells);
+	}
 
-        var log = new List<string>();
-        _selected.Weapon.ResolveAttack(_selected.State, _enemyUnit.State, log);
-        foreach (var line in log)
-            GD.Print(line);
+	private void TryAttack()
+	{
+		if (_selected.Weapon == null)
+		{
+			GD.PrintErr($"{_selected.State.Name} has no Weapon assigned in the Inspector.");
+			return;
+		}
 
-        _enemyUnit.RefreshHpLabel();
-        Deselect();
+		int distance = ChebyshevDistance(_selected.Cell, _enemyUnit.Cell);
+		if (distance > _selected.Weapon.Range)
+		{
+			GD.Print($"{_selected.State.Name} is out of range ({distance} > {_selected.Weapon.Range}).");
+			return;
+		}
 
-        if (_enemyUnit.State.Hp <= 0)
-            ShowVictory();
-    }
+		var log = new List<string>();
+		_selected.Weapon.ResolveAttack(_selected.State, _enemyUnit.State, log);
+		foreach (var line in log)
+			GD.Print(line);
 
-    private void ShowVictory()
-    {
-        _victoryLabel.Text = $"VICTORY -- {_enemyUnit.State.Name} destroyed.";
-        _victoryLabel.Visible = true;
-    }
+		_enemyUnit.RefreshHpLabel();
+		Deselect();
 
-    // Manhattan-distance BFS bounded by MoveRange, consulting AStarGrid2D
-    // for bounds/solid cells so obstacles can be added later without
-    // touching this method.
-    private HashSet<Vector2I> ComputeReachableCells(Vector2I origin, int moveRange)
-    {
-        var visited = new Dictionary<Vector2I, int> { [origin] = 0 };
-        var frontier = new Queue<Vector2I>();
-        frontier.Enqueue(origin);
+		if (_enemyUnit.State.Hp <= 0)
+			ShowVictory();
+	}
 
-        while (frontier.Count > 0)
-        {
-            var current = frontier.Dequeue();
-            int distance = visited[current];
-            if (distance >= moveRange)
-                continue;
+	private void ShowVictory()
+	{
+		_victoryLabel.Text = $"VICTORY -- {_enemyUnit.State.Name} destroyed.";
+		_victoryLabel.Visible = true;
+	}
 
-            foreach (var direction in MoveDirections)
-            {
-                var next = current + direction;
-                if (!_astar.IsInBoundsv(next)) continue;
-                if (_astar.IsPointSolid(next)) continue;
-                if (visited.ContainsKey(next)) continue;
-                if (next == _enemyUnit.Cell) continue;
+	// Manhattan-distance BFS bounded by MoveRange, consulting AStarGrid2D
+	// for bounds/solid cells so obstacles can be added later without
+	// touching this method.
+	private HashSet<Vector2I> ComputeReachableCells(Vector2I origin, int moveRange)
+	{
+		var visited = new Dictionary<Vector2I, int> { [origin] = 0 };
+		var frontier = new Queue<Vector2I>();
+		frontier.Enqueue(origin);
 
-                visited[next] = distance + 1;
-                frontier.Enqueue(next);
-            }
-        }
+		while (frontier.Count > 0)
+		{
+			var current = frontier.Dequeue();
+			int distance = visited[current];
+			if (distance >= moveRange)
+				continue;
 
-        visited.Remove(origin);
-        return new HashSet<Vector2I>(visited.Keys);
-    }
+			foreach (var direction in MoveDirections)
+			{
+				var next = current + direction;
+				if (!_astar.IsInBoundsv(next)) continue;
+				if (_astar.IsPointSolid(next)) continue;
+				if (visited.ContainsKey(next)) continue;
+				if (next == _enemyUnit.Cell) continue;
 
-    private static int ChebyshevDistance(Vector2I a, Vector2I b)
-    {
-        return Mathf.Max(Mathf.Abs(a.X - b.X), Mathf.Abs(a.Y - b.Y));
-    }
+				visited[next] = distance + 1;
+				frontier.Enqueue(next);
+			}
+		}
+
+		visited.Remove(origin);
+		return new HashSet<Vector2I>(visited.Keys);
+	}
+
+	private static int ChebyshevDistance(Vector2I a, Vector2I b)
+	{
+		return Mathf.Max(Mathf.Abs(a.X - b.X), Mathf.Abs(a.Y - b.Y));
+	}
 }

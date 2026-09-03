@@ -1,9 +1,9 @@
-[gd_resource type="WeaponData" load_steps=3 format=3]
+[gd_resource type="Resource" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://Resources/WeaponData.cs" id="1"]
 [ext_resource type="Script" path="res://Resources/DamageEffect.cs" id="2"]
 
-[sub_resource type="DamageEffect" id="DamageEffect_1"]
+[sub_resource type="Resource" id="DamageEffect_1"]
 script = ExtResource("2")
 Amount = 10
 Type = 1
@@ -13,4 +13,4 @@ script = ExtResource("1")
 DisplayName = "Training Blaster"
 Range = 3
 TensionCost = 2
-Effects = Array[EffectData]([SubResource("DamageEffect_1")])
+Effects = Array[Resource]([SubResource("DamageEffect_1")])
