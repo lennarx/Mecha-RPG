@@ -10,9 +10,28 @@ public class UnitState
     public ArmorType Armor = ArmorType.Medium;
     public int MoveRange = CombatConstants.DefaultMoveRange;
 
-    // Tension resource (heat vs energy — still open in the tech doc).
-    // Generic name on purpose: when you decide, you rename one thing.
+    // Tension resource, defined as HEAT (tech doc 5.3). Field name kept as
+    // "Tension" because WeaponData.cs (frozen) writes attacker.Tension --
+    // renaming to Heat is tracked as debt until that file can be touched.
     public int Tension = 0;
+
+    public bool CanMove = true;
+    public bool CanAttack = true;
+
+    public bool HasActionsLeft => CanMove || CanAttack;
+
+    public void BeginTurn()
+    {
+        CanMove = true;
+        CanAttack = true;
+    }
+
+    // End-of-turn heat dissipation. The bonus/penalty curve for high heat
+    // is a separate iteration -- this is only the cooldown hook.
+    public void DissipateHeat()
+    {
+        Tension = System.Math.Max(0, Tension - CombatConstants.HeatDissipationPerTurn);
+    }
 }
 
 // Everything an effect needs to know in order to apply itself.

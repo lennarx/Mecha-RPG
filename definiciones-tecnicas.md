@@ -95,7 +95,8 @@ La progresión no es "conseguir más unidades", es **configurar mejor**.
 - Grilla, turnos por iniciativa.
 - **Daño por tipo** (energía / cinético / explosivo) contra tipos de armadura.
 - **Rango + línea de visión + terreno con cobertura** — da profundidad táctica sin requerir más assets.
-- **Recurso de tensión** (calor o energía) que obliga a elegir entre disparar fuerte o moverse. Este es el elemento que separa el juego de un táctico genérico. **[abierto: calor vs energía]**
+- **Recurso de tensión: CALOR.** Se acumula al disparar (y a futuro, al moverse) y obliga a elegir entre disparar fuerte o desplazarse. Disipa una cantidad fija al final del turno de la unidad (`CombatConstants.HeatDissipationPerTurn`). Este es el elemento que separa el juego de un táctico genérico.
+  **Pendiente para la próxima iteración:** curva de bonus por calor alto y penalización por sobrecalentamiento.
 - TileMap de Godot con capas de terreno resuelve grilla y pathfinding (A* nativo).
 
 ### 5.4 Sincronización — sistema puente
@@ -154,6 +155,5 @@ Razones de diseño, no solo de criterio:
 - [ ] Verificar build .NET de Godot y `dotnet --list-sdks`.
 - [ ] Definir modelo de datos: chasis, armas, módulos, efectos.
 - [ ] Prototipar el loop de una misión (grilla, movimiento, un ataque, condición de victoria).
-- [ ] Decidir recurso de tensión: calor vs energía.
 - [ ] Decidir vista: isométrica vs top-down 3/4.
 - [ ] Definir estilo de retrato y hacer una prueba de personaje completo (retrato + sprite 64px).

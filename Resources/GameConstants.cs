@@ -37,6 +37,9 @@ public static class CombatConstants
     public const int DefaultDamage = 10;
     public const int DefaultMoveRange = 4;
 
+    // Heat dissipated at the end of the owning unit's turn (tech doc 5.3).
+    public const int HeatDissipationPerTurn = 1;
+
     // Damage-vs-armor multipliers (tech doc section 5.3).
     public const float NeutralMultiplier = 1.0f;
     public const float StrongMultiplier = 1.5f;

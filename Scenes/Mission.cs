@@ -7,10 +7,15 @@ using System.Collections.Generic;
 // AttackTest.cs's role (drive UnitState + WeaponData) but interactively.
 public partial class Mission : Node2D
 {
+	private enum TurnSide { Player, Enemy }
+
 	private const int GridWidth = 8;
 	private const int GridHeight = 8;
 	private const int TileSize = 64;
 	private const int TileBorderWidth = 2;
+
+	// Presentation pacing, not balance -- CombatConstants stays free of this.
+	private const float EnemyThinkDelaySeconds = 0.45f;
 
 	private static readonly Color TileFillColor = new(0.18f, 0.2f, 0.24f);
 	private static readonly Color TileBorderColor = new(0.42f, 0.47f, 0.55f);
@@ -25,10 +30,15 @@ public partial class Mission : Node2D
 	private Unit _playerUnit;
 	private Unit _enemyUnit;
 	private Label _victoryLabel;
+	private Label _turnLabel;
+	private Label _defeatLabel;
 	private AStarGrid2D _astar;
 
 	private Unit _selected;
 	private HashSet<Vector2I> _reachableCells = new();
+
+	private TurnSide _turn = TurnSide.Player;
+	private bool _missionOver;
 
 	public override void _Ready()
 	{
@@ -37,6 +47,8 @@ public partial class Mission : Node2D
 		_playerUnit = GetNode<Unit>("Units/PlayerUnit");
 		_enemyUnit = GetNode<Unit>("Units/EnemyUnit");
 		_victoryLabel = GetNode<Label>("VictoryLabel");
+		_turnLabel = GetNode<Label>("TurnLabel");
+		_defeatLabel = GetNode<Label>("DefeatLabel");
 
 		BuildTileSet();
 		BuildAstarGrid();
@@ -56,10 +68,21 @@ public partial class Mission : Node2D
 		_enemyUnit.RefreshHpLabel();
 
 		_victoryLabel.Visible = false;
+
+		StartTurn(TurnSide.Player);
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
+		if (_missionOver || _turn != TurnSide.Player)
+			return;
+
+		if (@event.IsActionPressed("ui_accept"))
+		{
+			EndTurn();
+			return;
+		}
+
 		if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
 			HandleCellClick(_grid.LocalToMap(_grid.GetLocalMousePosition()));
 	}
@@ -98,6 +121,7 @@ public partial class Mission : Node2D
 		{
 			Region = new Rect2I(0, 0, GridWidth, GridHeight),
 			CellSize = new Vector2(TileSize, TileSize),
+			DiagonalMode = AStarGrid2D.DiagonalModeEnum.Never,
 		};
 		_astar.Update();
 	}
@@ -109,10 +133,6 @@ public partial class Mission : Node2D
 
 	private void HandleCellClick(Vector2I cell)
 	{
-		// TEMP: input tracing while the click loop is being tuned. Remove
-		// once selection/movement feedback is confirmed on screen.
-		GD.Print($"[Mission] Clicked cell {cell} | player cell {_playerUnit.Cell} | match: {cell == _playerUnit.Cell} | selected: {_selected?.State.Name ?? "none"}");
-
 		if (_selected == null)
 		{
 			if (cell == _playerUnit.Cell)
@@ -135,7 +155,10 @@ public partial class Mission : Node2D
 		if (_reachableCells.Contains(cell))
 		{
 			PlaceUnit(_selected, cell);
+			_playerUnit.State.CanMove = false;
 			Deselect();
+			UpdateTurnLabel();
+			EndTurnIfPlayerDone();
 		}
 	}
 
@@ -143,7 +166,9 @@ public partial class Mission : Node2D
 	{
 		_selected = unit;
 		unit.SetSelected(true);
-		_reachableCells = ComputeReachableCells(unit.Cell, unit.State.MoveRange);
+		_reachableCells = unit.State.CanMove
+			? ComputeReachableCells(unit.Cell, unit.State.MoveRange, _enemyUnit.Cell)
+			: new HashSet<Vector2I>();
 		_highlight.SetCells(_reachableCells);
 	}
 
@@ -157,6 +182,12 @@ public partial class Mission : Node2D
 
 	private void TryAttack()
 	{
+		if (!_selected.State.CanAttack)
+		{
+			GD.Print($"{_selected.State.Name} already used its attack this turn.");
+			return;
+		}
+
 		if (_selected.Weapon == null)
 		{
 			GD.PrintErr($"{_selected.State.Name} has no Weapon assigned in the Inspector.");
@@ -176,22 +207,123 @@ public partial class Mission : Node2D
 			GD.Print(line);
 
 		_enemyUnit.RefreshHpLabel();
+		_selected.State.CanAttack = false;
 		Deselect();
 
 		if (_enemyUnit.State.Hp <= 0)
+		{
 			ShowVictory();
+			return;
+		}
+
+		UpdateTurnLabel();
+		EndTurnIfPlayerDone();
+	}
+
+	private void EndTurnIfPlayerDone()
+	{
+		if (!_playerUnit.State.HasActionsLeft)
+			EndTurn();
+	}
+
+	private void StartTurn(TurnSide side)
+	{
+		_turn = side;
+		var unit = side == TurnSide.Player ? _playerUnit : _enemyUnit;
+		unit.State.BeginTurn();
+		UpdateTurnLabel();
+
+		if (side == TurnSide.Enemy)
+			RunEnemyTurnAsync();
+	}
+
+	private void EndTurn()
+	{
+		if (_missionOver)
+			return;
+
+		Deselect();
+		var endingUnit = _turn == TurnSide.Player ? _playerUnit : _enemyUnit;
+		endingUnit.State.DissipateHeat();
+		StartTurn(_turn == TurnSide.Player ? TurnSide.Enemy : TurnSide.Player);
+	}
+
+	private void UpdateTurnLabel()
+	{
+		if (_turn == TurnSide.Enemy)
+		{
+			_turnLabel.Text = "ENEMY TURN";
+			return;
+		}
+
+		string move = _playerUnit.State.CanMove ? "ok" : "used";
+		string attack = _playerUnit.State.CanAttack ? "ok" : "used";
+		_turnLabel.Text = $"YOUR TURN -- move: {move} / attack: {attack}  [Space] end turn";
+	}
+
+	private async void RunEnemyTurnAsync()
+	{
+		await ToSignal(GetTree().CreateTimer(EnemyThinkDelaySeconds), SceneTreeTimer.SignalName.Timeout);
+
+		if (_missionOver)
+			return;
+
+		var enemyCell = _enemyUnit.Cell;
+		var playerCell = _playerUnit.Cell;
+
+		if (ChebyshevDistance(enemyCell, playerCell) <= _enemyUnit.Weapon.Range)
+		{
+			var log = new List<string>();
+			_enemyUnit.Weapon.ResolveAttack(_enemyUnit.State, _playerUnit.State, log);
+			foreach (var line in log)
+				GD.Print(line);
+
+			_playerUnit.RefreshHpLabel();
+			_enemyUnit.State.CanAttack = false;
+
+			if (_playerUnit.State.Hp <= 0)
+			{
+				ShowDefeat();
+				return;
+			}
+		}
+		else
+		{
+			var idPath = _astar.GetIdPath(enemyCell, playerCell);
+			if (idPath.Count > 1)
+			{
+				var path = new List<Vector2I>(idPath);
+				path.RemoveAt(path.Count - 1); // drop the player's cell, it can't be occupied
+				int steps = Mathf.Min(_enemyUnit.State.MoveRange, path.Count - 1);
+				PlaceUnit(_enemyUnit, path[steps]);
+			}
+
+			_enemyUnit.State.CanMove = false;
+		}
+
+		EndTurn();
 	}
 
 	private void ShowVictory()
 	{
 		_victoryLabel.Text = $"VICTORY -- {_enemyUnit.State.Name} destroyed.";
 		_victoryLabel.Visible = true;
+		_missionOver = true;
+		_turnLabel.Visible = false;
+	}
+
+	private void ShowDefeat()
+	{
+		_defeatLabel.Text = $"DEFEAT -- {_playerUnit.State.Name} destroyed.";
+		_defeatLabel.Visible = true;
+		_missionOver = true;
+		_turnLabel.Visible = false;
 	}
 
 	// Manhattan-distance BFS bounded by MoveRange, consulting AStarGrid2D
 	// for bounds/solid cells so obstacles can be added later without
 	// touching this method.
-	private HashSet<Vector2I> ComputeReachableCells(Vector2I origin, int moveRange)
+	private HashSet<Vector2I> ComputeReachableCells(Vector2I origin, int moveRange, Vector2I blockedCell)
 	{
 		var visited = new Dictionary<Vector2I, int> { [origin] = 0 };
 		var frontier = new Queue<Vector2I>();
@@ -210,7 +342,7 @@ public partial class Mission : Node2D
 				if (!_astar.IsInBoundsv(next)) continue;
 				if (_astar.IsPointSolid(next)) continue;
 				if (visited.ContainsKey(next)) continue;
-				if (next == _enemyUnit.Cell) continue;
+				if (next == blockedCell) continue;
 
 				visited[next] = distance + 1;
 				frontier.Enqueue(next);
