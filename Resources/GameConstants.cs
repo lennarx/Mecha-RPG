@@ -39,7 +39,7 @@ public static class CombatConstants
 
     // Heat costs and dissipation (tech doc 5.3).
     public const int MoveHeatCost = 1;
-    public const int HeatDissipationPerTurn = 2;
+    public const int HeatDissipationPerTurn = 1;
     public const int NoActionHeatDissipation = 4;
 
     // Heat band thresholds and cap (tech doc 5.3).
