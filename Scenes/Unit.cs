@@ -18,13 +18,16 @@ public partial class Unit : Node2D
 
     private ColorRect _visual;
     private Label _hpLabel;
+    private Label _heatLabel;
     private bool _isSelected;
 
     public override void _Ready()
     {
         _visual = GetNode<ColorRect>("Visual");
         _hpLabel = GetNode<Label>("HpLabel");
+        _heatLabel = GetNode<Label>("HeatLabel");
         RefreshHpLabel();
+        RefreshHeatLabel();
     }
 
     public void SetColor(Color color)
@@ -53,6 +56,12 @@ public partial class Unit : Node2D
     {
         if (_hpLabel != null && State != null)
             _hpLabel.Text = State.Hp.ToString();
+    }
+
+    public void RefreshHeatLabel()
+    {
+        if (_heatLabel != null && State != null)
+            _heatLabel.Text = $"HEAT: {State.Tension}/{CombatConstants.MaxTension} ({Combat.GetHeatBand(State.Tension)})";
     }
 
     public override void _Draw()

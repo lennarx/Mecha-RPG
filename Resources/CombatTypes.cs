@@ -12,3 +12,13 @@ public enum ArmorType
     Medium,
     Heavy
 }
+
+// Heat bands (tech doc 5.3). Cold [0-3], Optimal [4-7], Critical [8-9],
+// Overload [== MaxTension]. Drives both offensive and defensive multipliers.
+public enum HeatBand
+{
+    Cold,
+    Optimal,
+    Critical,
+    Overload
+}

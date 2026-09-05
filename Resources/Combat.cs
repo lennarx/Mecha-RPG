@@ -10,14 +10,41 @@ public static class Combat
     {
         { (DamageType.Energy,    ArmorType.Light),  CombatConstants.StrongMultiplier },
         { (DamageType.Energy,    ArmorType.Heavy),  CombatConstants.WeakMultiplier },
+        { (DamageType.Kinetic,   ArmorType.Light),  CombatConstants.StrongMultiplier },
         { (DamageType.Kinetic,   ArmorType.Medium), CombatConstants.SlightAdvantageMultiplier },
         { (DamageType.Explosive, ArmorType.Heavy),  CombatConstants.StrongMultiplier },
         { (DamageType.Explosive, ArmorType.Light),  CombatConstants.SlightPenaltyMultiplier },
     };
 
-    public static int CalculateDamage(int baseDamage, DamageType type, ArmorType armor)
+    public static HeatBand GetHeatBand(int tension)
     {
-        float mult = Multipliers.GetValueOrDefault((type, armor), CombatConstants.NeutralMultiplier);
-        return (int)(baseDamage * mult);
+        if (tension >= CombatConstants.MaxTension) return HeatBand.Overload;
+        if (tension >= CombatConstants.CriticalHeatThreshold) return HeatBand.Critical;
+        if (tension >= CombatConstants.OptimalHeatThreshold) return HeatBand.Optimal;
+        return HeatBand.Cold;
+    }
+
+    public static float GetOffensiveHeatMultiplier(int tension)
+    {
+        var band = GetHeatBand(tension);
+        return band is HeatBand.Optimal or HeatBand.Critical or HeatBand.Overload
+            ? CombatConstants.HeatDamageBonusMultiplier
+            : CombatConstants.NeutralMultiplier;
+    }
+
+    public static float GetDefensiveHeatMultiplier(int tension)
+    {
+        var band = GetHeatBand(tension);
+        return band is HeatBand.Critical or HeatBand.Overload
+            ? CombatConstants.HeatDefensePenaltyMultiplier
+            : CombatConstants.NeutralMultiplier;
+    }
+
+    public static int CalculateDamage(int baseDamage, DamageType type, ArmorType armor, int attackerTension, int targetTension)
+    {
+        float armorMult = Multipliers.GetValueOrDefault((type, armor), CombatConstants.NeutralMultiplier);
+        float offensiveHeatMult = GetOffensiveHeatMultiplier(attackerTension);
+        float defensiveHeatMult = GetDefensiveHeatMultiplier(targetTension);
+        return (int)(baseDamage * armorMult * offensiveHeatMult * defensiveHeatMult);
     }
 }

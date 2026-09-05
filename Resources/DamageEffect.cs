@@ -10,7 +10,7 @@ public partial class DamageEffect : EffectData
 
     public override void Apply(AttackContext ctx)
     {
-        int finalDamage = Combat.CalculateDamage(Amount, Type, ctx.Target.Armor);
+        int finalDamage = Combat.CalculateDamage(Amount, Type, ctx.Target.Armor, ctx.Attacker.Tension, ctx.Target.Tension);
         ctx.Target.Hp -= finalDamage;
         ctx.Log.Add($"{ctx.Target.Name} takes {finalDamage} damage ({Type} vs {ctx.Target.Armor})");
     }

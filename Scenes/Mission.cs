@@ -16,6 +16,7 @@ public partial class Mission : Node2D
 
 	// Presentation pacing, not balance -- CombatConstants stays free of this.
 	private const float EnemyThinkDelaySeconds = 0.45f;
+	private const float MessageDisplaySeconds = 2.5f;
 
 	private static readonly Color TileFillColor = new(0.18f, 0.2f, 0.24f);
 	private static readonly Color TileBorderColor = new(0.42f, 0.47f, 0.55f);
@@ -32,6 +33,7 @@ public partial class Mission : Node2D
 	private Label _victoryLabel;
 	private Label _turnLabel;
 	private Label _defeatLabel;
+	private Label _messageLabel;
 	private AStarGrid2D _astar;
 
 	private Unit _selected;
@@ -39,6 +41,7 @@ public partial class Mission : Node2D
 
 	private TurnSide _turn = TurnSide.Player;
 	private bool _missionOver;
+	private int _messageToken;
 
 	public override void _Ready()
 	{
@@ -49,6 +52,7 @@ public partial class Mission : Node2D
 		_victoryLabel = GetNode<Label>("VictoryLabel");
 		_turnLabel = GetNode<Label>("TurnLabel");
 		_defeatLabel = GetNode<Label>("DefeatLabel");
+		_messageLabel = GetNode<Label>("MessageLabel");
 
 		BuildTileSet();
 		BuildAstarGrid();
@@ -66,6 +70,8 @@ public partial class Mission : Node2D
 
 		_playerUnit.RefreshHpLabel();
 		_enemyUnit.RefreshHpLabel();
+		_playerUnit.RefreshHeatLabel();
+		_enemyUnit.RefreshHeatLabel();
 
 		_victoryLabel.Visible = false;
 
@@ -155,11 +161,17 @@ public partial class Mission : Node2D
 		if (_reachableCells.Contains(cell))
 		{
 			PlaceUnit(_selected, cell);
-			_playerUnit.State.CanMove = false;
+			_selected.State.CanMove = false;
+			_selected.State.Tension += CombatConstants.MoveHeatCost;
+			_selected.RefreshHeatLabel();
 			Deselect();
 			UpdateTurnLabel();
 			EndTurnIfPlayerDone();
+			return;
 		}
+
+		if (!_selected.State.CanMove)
+			ShowMessage($"{_selected.State.Name} already used its move this turn.");
 	}
 
 	private void SelectUnit(Unit unit)
@@ -185,6 +197,7 @@ public partial class Mission : Node2D
 		if (!_selected.State.CanAttack)
 		{
 			GD.Print($"{_selected.State.Name} already used its attack this turn.");
+			ShowMessage($"{_selected.State.Name} already used its attack this turn.");
 			return;
 		}
 
@@ -194,10 +207,11 @@ public partial class Mission : Node2D
 			return;
 		}
 
-		int distance = ChebyshevDistance(_selected.Cell, _enemyUnit.Cell);
+		int distance = ManhattanDistance(_selected.Cell, _enemyUnit.Cell);
 		if (distance > _selected.Weapon.Range)
 		{
 			GD.Print($"{_selected.State.Name} is out of range ({distance} > {_selected.Weapon.Range}).");
+			ShowMessage($"Target out of range ({distance} > {_selected.Weapon.Range}).");
 			return;
 		}
 
@@ -207,6 +221,7 @@ public partial class Mission : Node2D
 			GD.Print(line);
 
 		_enemyUnit.RefreshHpLabel();
+		_selected.RefreshHeatLabel();
 		_selected.State.CanAttack = false;
 		Deselect();
 
@@ -233,8 +248,40 @@ public partial class Mission : Node2D
 		unit.State.BeginTurn();
 		UpdateTurnLabel();
 
+		if (side == TurnSide.Player)
+			ClearMessage();
+
+		if (unit.State.IsOverloaded)
+			ShowMessage($"{unit.State.Name} is overloaded -- locked for this turn.");
+
 		if (side == TurnSide.Enemy)
-			RunEnemyTurnAsync();
+		{
+			if (unit.State.IsOverloaded)
+				EndTurn();
+			else
+				RunEnemyTurnAsync();
+		}
+	}
+
+	// Shows a transient hint for invalid actions (attack/move already used,
+	// target out of range). Cleared at the start of the player's turn or
+	// after MessageDisplaySeconds, whichever comes first. The token guards
+	// against a stale timer clearing a message shown after it was scheduled.
+	private async void ShowMessage(string text)
+	{
+		_messageLabel.Text = text;
+		int token = ++_messageToken;
+
+		await ToSignal(GetTree().CreateTimer(MessageDisplaySeconds), SceneTreeTimer.SignalName.Timeout);
+
+		if (token == _messageToken)
+			ClearMessage();
+	}
+
+	private void ClearMessage()
+	{
+		_messageLabel.Text = "";
+		_messageToken++;
 	}
 
 	private void EndTurn()
@@ -271,7 +318,7 @@ public partial class Mission : Node2D
 		var enemyCell = _enemyUnit.Cell;
 		var playerCell = _playerUnit.Cell;
 
-		if (ChebyshevDistance(enemyCell, playerCell) <= _enemyUnit.Weapon.Range)
+		if (ManhattanDistance(enemyCell, playerCell) <= _enemyUnit.Weapon.Range)
 		{
 			var log = new List<string>();
 			_enemyUnit.Weapon.ResolveAttack(_enemyUnit.State, _playerUnit.State, log);
@@ -279,6 +326,7 @@ public partial class Mission : Node2D
 				GD.Print(line);
 
 			_playerUnit.RefreshHpLabel();
+			_enemyUnit.RefreshHeatLabel();
 			_enemyUnit.State.CanAttack = false;
 
 			if (_playerUnit.State.Hp <= 0)
@@ -296,6 +344,8 @@ public partial class Mission : Node2D
 				path.RemoveAt(path.Count - 1); // drop the player's cell, it can't be occupied
 				int steps = Mathf.Min(_enemyUnit.State.MoveRange, path.Count - 1);
 				PlaceUnit(_enemyUnit, path[steps]);
+				_enemyUnit.State.Tension += CombatConstants.MoveHeatCost;
+				_enemyUnit.RefreshHeatLabel();
 			}
 
 			_enemyUnit.State.CanMove = false;
@@ -353,8 +403,8 @@ public partial class Mission : Node2D
 		return new HashSet<Vector2I>(visited.Keys);
 	}
 
-	private static int ChebyshevDistance(Vector2I a, Vector2I b)
+	private static int ManhattanDistance(Vector2I a, Vector2I b)
 	{
-		return Mathf.Max(Mathf.Abs(a.X - b.X), Mathf.Abs(a.Y - b.Y));
+		return Mathf.Abs(a.X - b.X) + Mathf.Abs(a.Y - b.Y);
 	}
 }

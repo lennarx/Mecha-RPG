@@ -21,3 +21,12 @@ offset_bottom = -28.0
 mouse_filter = 2
 horizontal_alignment = 1
 text = "0"
+
+[node name="HeatLabel" type="Label" parent="."]
+offset_left = -60.0
+offset_top = -68.0
+offset_right = 60.0
+offset_bottom = -48.0
+mouse_filter = 2
+horizontal_alignment = 1
+text = "HEAT: 0/10 (Cold)"

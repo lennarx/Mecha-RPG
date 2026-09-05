@@ -31,14 +31,25 @@ public static class CharacterNames
 public static class CombatConstants
 {
     // Default stats — placeholder balance values, tune freely.
-    public const int DefaultUnitHp = 30;
+    public const int DefaultUnitHp = 60;
     public const int DefaultWeaponRange = 3;
-    public const int DefaultTensionCost = 2;
+    public const int DefaultTensionCost = 3;
     public const int DefaultDamage = 10;
     public const int DefaultMoveRange = 4;
 
-    // Heat dissipated at the end of the owning unit's turn (tech doc 5.3).
-    public const int HeatDissipationPerTurn = 1;
+    // Heat costs and dissipation (tech doc 5.3).
+    public const int MoveHeatCost = 1;
+    public const int HeatDissipationPerTurn = 2;
+    public const int NoActionHeatDissipation = 4;
+
+    // Heat band thresholds and cap (tech doc 5.3).
+    public const int OptimalHeatThreshold = 4;
+    public const int CriticalHeatThreshold = 8;
+    public const int MaxTension = 10;
+
+    // Heat band damage multipliers (tech doc 5.3).
+    public const float HeatDamageBonusMultiplier = 1.3f;
+    public const float HeatDefensePenaltyMultiplier = 1.5f;
 
     // Damage-vs-armor multipliers (tech doc section 5.3).
     public const float NeutralMultiplier = 1.0f;

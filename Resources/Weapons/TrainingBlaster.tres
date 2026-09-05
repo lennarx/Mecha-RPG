@@ -12,5 +12,5 @@ Type = 1
 script = ExtResource("1")
 DisplayName = "Training Blaster"
 Range = 3
-TensionCost = 2
+TensionCost = 3
 Effects = Array[Resource]([SubResource("DamageEffect_1")])
