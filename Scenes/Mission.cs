@@ -64,7 +64,7 @@ public partial class Mission : Node2D
 		_playerUnit.SetColor(new Color(0.25f, 0.5f, 1f));
 		PlaceUnit(_playerUnit, new Vector2I(1, 6));
 
-		_enemyUnit.State = new UnitState { Name = CharacterNames.TrainingDummy, Armor = ArmorType.Light };
+		_enemyUnit.State = new UnitState { Name = CharacterNames.TrainingDummy, Armor = ArmorType.Light, Hp = CombatConstants.TrainingDummyHp };
 		_enemyUnit.SetColor(new Color(1f, 0.3f, 0.3f));
 		PlaceUnit(_enemyUnit, new Vector2I(6, 1));
 

@@ -32,6 +32,13 @@ public static class CombatConstants
 {
     // Default stats — placeholder balance values, tune freely.
     public const int DefaultUnitHp = 60;
+
+    // Training Dummy is a disposable test opponent (CharacterNames.TrainingDummy),
+    // calibrated separately from DefaultUnitHp: the heat curve needs at least
+    // 6 exchanges to be traversed end to end (tech doc 5.3), so its HP is set
+    // higher than a real playable unit's just to make the test mission last
+    // long enough for Overload to become reachable.
+    public const int TrainingDummyHp = 90;
     public const int DefaultWeaponRange = 3;
     public const int DefaultTensionCost = 3;
     public const int DefaultDamage = 10;
