@@ -7,19 +7,19 @@ using System.Collections.Generic;
 [GlobalClass]
 public partial class WeaponData : Resource
 {
-    [Export] public string DisplayName { get; set; } = "";
-    [Export] public int Range { get; set; } = CombatConstants.DefaultWeaponRange;
-    [Export] public int TensionCost { get; set; } = CombatConstants.DefaultTensionCost;
-    [Export] public Godot.Collections.Array<EffectData> Effects { get; set; } = new();
+	[Export] public string DisplayName { get; set; } = "";
+	[Export] public int Range { get; set; } = CombatConstants.DefaultWeaponRange;
+	[Export] public int TensionCost { get; set; } = CombatConstants.DefaultTensionCost;
+	[Export] public Godot.Collections.Array<EffectData> Effects { get; set; } = new();
 
-    // Entry point: fires every effect of the weapon, in order.
-    public void ResolveAttack(UnitState attacker, UnitState target, List<string> log)
-    {
-        attacker.Tension += TensionCost;
-        log.Add($"{attacker.Name} fires {DisplayName} (+{TensionCost} tension, total {attacker.Tension})");
+	// Entry point: fires every effect of the weapon, in order.
+	public void ResolveAttack(UnitState attacker, UnitState target, List<string> log)
+	{
+		attacker.Tension += TensionCost;
+		log.Add($"{attacker.Name} fires {DisplayName} (+{TensionCost} tension, total {attacker.Tension})");
 
-        var ctx = new AttackContext { Attacker = attacker, Target = target, Log = log };
-        foreach (var effect in Effects)
-            effect.Apply(ctx);
-    }
+		var ctx = new AttackContext { Attacker = attacker, Target = target, Log = log };
+		foreach (var effect in Effects)
+			effect.Apply(ctx);
+	}
 }

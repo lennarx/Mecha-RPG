@@ -8,8 +8,8 @@ using Godot;
 [GlobalClass]
 public partial class EffectData : Resource
 {
-    public virtual void Apply(AttackContext ctx)
-    {
-        // Base does nothing. Each concrete effect overrides this.
-    }
+	public virtual void Apply(AttackContext ctx)
+	{
+		// Base does nothing. Each concrete effect overrides this.
+	}
 }

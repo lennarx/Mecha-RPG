@@ -76,10 +76,16 @@ public partial class Mission : Node2D
 		_victoryLabel.Visible = false;
 
 		StartTurn(TurnSide.Player);
+
+		// TEMP: confirms _Ready ran to completion without throwing.
+		GD.Print("[TEMP] Mission._Ready finished.");
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
+		// TEMP: confirms input is actually reaching Mission.cs at all.
+		GD.Print($"[TEMP] _UnhandledInput fired: {@event}, turn={_turn}, missionOver={_missionOver}");
+
 		if (_missionOver || _turn != TurnSide.Player)
 			return;
 
