@@ -308,6 +308,11 @@ public partial class Mission : Node2D
 		_turnLabel.Text = $"YOUR TURN -- move: {move} / attack: {attack}  [Space] end turn";
 	}
 
+	// The enemy uses both actions per turn, same as the player: close the
+	// distance first, then attack if the move brought it into range. This
+	// is what makes kiting costly -- see definiciones-tecnicas.md 5.3 and
+	// the kiting fix discussion for why a single-action enemy turn made
+	// the heat curve irrelevant.
 	private async void RunEnemyTurnAsync()
 	{
 		await ToSignal(GetTree().CreateTimer(EnemyThinkDelaySeconds), SceneTreeTimer.SignalName.Timeout);
@@ -315,43 +320,50 @@ public partial class Mission : Node2D
 		if (_missionOver)
 			return;
 
-		var enemyCell = _enemyUnit.Cell;
-		var playerCell = _playerUnit.Cell;
+		if (!IsInWeaponRange(_enemyUnit.Cell, _playerUnit.Cell, _enemyUnit.Weapon))
+			MoveEnemyTowardPlayer();
 
-		if (ManhattanDistance(enemyCell, playerCell) <= _enemyUnit.Weapon.Range)
+		if (!_missionOver && IsInWeaponRange(_enemyUnit.Cell, _playerUnit.Cell, _enemyUnit.Weapon))
+			AttackWithEnemy();
+
+		if (!_missionOver)
+			EndTurn();
+	}
+
+	private static bool IsInWeaponRange(Vector2I from, Vector2I to, WeaponData weapon)
+	{
+		return ManhattanDistance(from, to) <= weapon.Range;
+	}
+
+	private void MoveEnemyTowardPlayer()
+	{
+		var idPath = _astar.GetIdPath(_enemyUnit.Cell, _playerUnit.Cell);
+		if (idPath.Count > 1)
 		{
-			var log = new List<string>();
-			_enemyUnit.Weapon.ResolveAttack(_enemyUnit.State, _playerUnit.State, log);
-			foreach (var line in log)
-				GD.Print(line);
-
-			_playerUnit.RefreshHpLabel();
+			var path = new List<Vector2I>(idPath);
+			path.RemoveAt(path.Count - 1); // drop the player's cell, it can't be occupied
+			int steps = Mathf.Min(_enemyUnit.State.MoveRange, path.Count - 1);
+			PlaceUnit(_enemyUnit, path[steps]);
+			_enemyUnit.State.Tension += CombatConstants.MoveHeatCost;
 			_enemyUnit.RefreshHeatLabel();
-			_enemyUnit.State.CanAttack = false;
-
-			if (_playerUnit.State.Hp <= 0)
-			{
-				ShowDefeat();
-				return;
-			}
-		}
-		else
-		{
-			var idPath = _astar.GetIdPath(enemyCell, playerCell);
-			if (idPath.Count > 1)
-			{
-				var path = new List<Vector2I>(idPath);
-				path.RemoveAt(path.Count - 1); // drop the player's cell, it can't be occupied
-				int steps = Mathf.Min(_enemyUnit.State.MoveRange, path.Count - 1);
-				PlaceUnit(_enemyUnit, path[steps]);
-				_enemyUnit.State.Tension += CombatConstants.MoveHeatCost;
-				_enemyUnit.RefreshHeatLabel();
-			}
-
-			_enemyUnit.State.CanMove = false;
 		}
 
-		EndTurn();
+		_enemyUnit.State.CanMove = false;
+	}
+
+	private void AttackWithEnemy()
+	{
+		var log = new List<string>();
+		_enemyUnit.Weapon.ResolveAttack(_enemyUnit.State, _playerUnit.State, log);
+		foreach (var line in log)
+			GD.Print(line);
+
+		_playerUnit.RefreshHpLabel();
+		_enemyUnit.RefreshHeatLabel();
+		_enemyUnit.State.CanAttack = false;
+
+		if (_playerUnit.State.Hp <= 0)
+			ShowDefeat();
 	}
 
 	private void ShowVictory()
