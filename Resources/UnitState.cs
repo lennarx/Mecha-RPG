@@ -44,8 +44,17 @@ public class UnitState
     // End-of-turn heat dissipation. A turn where no action was taken --
     // whether by choice (cooling down) or because overload locked the unit
     // out -- dissipates double (tech doc 5.3).
+    //
+    // A unit that just reached max tension this turn (by acting) holds at
+    // the max instead of dissipating, so next turn's BeginTurn() actually
+    // sees it overloaded and locks it. Without this, DissipateHeat always
+    // subtracting made the overload lock unreachable.
     public void DissipateHeat()
     {
+        bool justOverloaded = IsOverloaded && !_wasOverloadedAtTurnStart;
+        if (justOverloaded)
+            return;
+
         bool noActionsTaken = _wasOverloadedAtTurnStart || (CanMove && CanAttack);
         int amount = noActionsTaken
             ? CombatConstants.NoActionHeatDissipation
