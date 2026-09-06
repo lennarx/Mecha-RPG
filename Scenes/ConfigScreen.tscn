@@ -1,0 +1,66 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://Scenes/ConfigScreen.cs" id="1"]
+[ext_resource type="Script" path="res://Resources/ChassisData.cs" id="2"]
+[ext_resource type="Script" path="res://Resources/WeaponData.cs" id="3"]
+[ext_resource type="Script" path="res://Resources/EnemyData.cs" id="4"]
+[ext_resource type="Resource" path="res://Resources/Chassis/Vanguard.tres" id="5"]
+[ext_resource type="Resource" path="res://Resources/Chassis/Bulwark.tres" id="6"]
+[ext_resource type="Resource" path="res://Resources/Weapons/TrainingBlaster.tres" id="7"]
+[ext_resource type="Resource" path="res://Resources/Weapons/PulseRifle.tres" id="8"]
+[ext_resource type="Resource" path="res://Resources/Weapons/HeavyCannon.tres" id="9"]
+[ext_resource type="Resource" path="res://Resources/Weapons/Shotgun.tres" id="10"]
+[ext_resource type="Resource" path="res://Resources/Weapons/SniperLance.tres" id="11"]
+[ext_resource type="Resource" path="res://Resources/Enemies/TrainingDummyLoadout.tres" id="12"]
+[ext_resource type="Resource" path="res://Resources/Enemies/HeavyDroneLoadout.tres" id="13"]
+
+[node name="ConfigScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+ChassisOptions = Array[ExtResource("2")]([ExtResource("5"), ExtResource("6")])
+WeaponOptions = Array[ExtResource("3")]([ExtResource("7"), ExtResource("8"), ExtResource("9"), ExtResource("10"), ExtResource("11")])
+EnemyOptions = Array[ExtResource("4")]([ExtResource("12"), ExtResource("13")])
+
+[node name="Title" type="Label" parent="."]
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 500.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 28
+text = "MISSION CONFIG"
+
+[node name="Panel" type="VBoxContainer" parent="."]
+offset_left = 40.0
+offset_top = 100.0
+offset_right = 400.0
+offset_bottom = 320.0
+theme_override_constants/separation = 12
+
+[node name="ChassisLabel" type="Label" parent="Panel"]
+layout_mode = 2
+text = "Chassis"
+
+[node name="ChassisOption" type="OptionButton" parent="Panel"]
+layout_mode = 2
+
+[node name="WeaponLabel" type="Label" parent="Panel"]
+layout_mode = 2
+text = "Weapon"
+
+[node name="WeaponOption" type="OptionButton" parent="Panel"]
+layout_mode = 2
+
+[node name="EnemyLabel" type="Label" parent="Panel"]
+layout_mode = 2
+text = "Enemy"
+
+[node name="EnemyOption" type="OptionButton" parent="Panel"]
+layout_mode = 2
+
+[node name="LaunchButton" type="Button" parent="Panel"]
+layout_mode = 2
+text = "Launch Mission"
