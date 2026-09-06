@@ -6,6 +6,7 @@ using Godot;
 // Mission.cs at spawn time, same pattern as AttackTest.cs).
 public partial class Unit : Node2D
 {
+    [Export] public ChassisData Chassis { get; set; }
     [Export] public WeaponData Weapon { get; set; }
 
     public UnitState State { get; set; }

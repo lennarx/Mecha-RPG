@@ -60,11 +60,15 @@ public partial class Mission : Node2D
 		_highlight.Grid = _grid;
 		_highlight.TileSize = TileSize;
 
-		_playerUnit.State = new UnitState { Name = CharacterNames.Protagonist };
+		var playerChassis = MissionLoadout.PlayerChassis ?? _playerUnit.Chassis;
+		_playerUnit.Weapon = MissionLoadout.PlayerWeapon ?? _playerUnit.Weapon;
+		_playerUnit.State = BuildUnitState(CharacterNames.Protagonist, playerChassis);
 		_playerUnit.SetColor(new Color(0.25f, 0.5f, 1f));
 		PlaceUnit(_playerUnit, new Vector2I(1, 6));
 
-		_enemyUnit.State = new UnitState { Name = CharacterNames.TrainingDummy, Armor = ArmorType.Light, Hp = CombatConstants.TrainingDummyHp };
+		var enemyChassis = MissionLoadout.EnemyChassis ?? _enemyUnit.Chassis;
+		_enemyUnit.Weapon = MissionLoadout.EnemyWeapon ?? _enemyUnit.Weapon;
+		_enemyUnit.State = BuildUnitState(MissionLoadout.EnemyName, enemyChassis);
 		_enemyUnit.SetColor(new Color(1f, 0.3f, 0.3f));
 		PlaceUnit(_enemyUnit, new Vector2I(6, 1));
 
@@ -141,6 +145,19 @@ public partial class Mission : Node2D
 	private void PlaceUnit(Unit unit, Vector2I cell)
 	{
 		unit.PlaceAt(cell, _grid.MapToLocal(cell));
+	}
+
+	// Chassis-as-data (tech doc 5.1, 5.2): the chassis provides the stats,
+	// UnitState's shape is unchanged.
+	private static UnitState BuildUnitState(string name, ChassisData chassis)
+	{
+		return new UnitState
+		{
+			Name = name,
+			Hp = chassis.Hp,
+			Armor = chassis.Armor,
+			MoveRange = chassis.MoveRange,
+		};
 	}
 
 	private void HandleCellClick(Vector2I cell)

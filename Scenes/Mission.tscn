@@ -1,9 +1,11 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scenes/Mission.cs" id="1"]
 [ext_resource type="Script" path="res://Scenes/GridHighlight.cs" id="2"]
 [ext_resource type="PackedScene" path="res://Scenes/Unit.tscn" id="3"]
 [ext_resource type="Resource" path="res://Resources/Weapons/TrainingBlaster.tres" id="4"]
+[ext_resource type="Resource" path="res://Resources/Chassis/Vanguard.tres" id="5"]
+[ext_resource type="Resource" path="res://Resources/Chassis/TrainingDummyChassis.tres" id="6"]
 
 [node name="Mission" type="Node2D"]
 script = ExtResource("1")
@@ -16,9 +18,11 @@ script = ExtResource("2")
 [node name="Units" type="Node2D" parent="."]
 
 [node name="PlayerUnit" parent="Units" instance=ExtResource("3")]
+Chassis = ExtResource("5")
 Weapon = ExtResource("4")
 
 [node name="EnemyUnit" parent="Units" instance=ExtResource("3")]
+Chassis = ExtResource("6")
 Weapon = ExtResource("4")
 
 [node name="VictoryLabel" type="Label" parent="."]
