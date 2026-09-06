@@ -100,7 +100,8 @@ La progresión no es "conseguir más unidades", es **configurar mejor**.
   **Curva de calor implementada:** banda Fría (0-3) sin modificadores; bandas Óptima (4-7) y Crítica (8-9) infligen daño x1.3 (`CombatConstants.HeatDamageBonusMultiplier`); la banda Crítica, y la de Sobrecarga, además reciben x1.5 de daño (`CombatConstants.HeatDefensePenaltyMultiplier`). Al tocar el tope de Sobrecarga (10) la unidad queda bloqueada -- no puede moverse ni atacar -- durante todo su turno siguiente.
   **Disipación:** al final de un turno en el que la unidad usó alguna acción, disipa `CombatConstants.HeatDissipationPerTurn` (1); si no usó ninguna acción -- por elección propia para enfriarse, o porque la sobrecarga se lo impidió -- disipa mucho más, `CombatConstants.NoActionHeatDissipation` (4). Enfriarse a propósito es una jugada táctica válida.
 - TileMap de Godot con capas de terreno resuelve grilla y pathfinding (A* nativo).
-- **HP del oponente de prueba, calibrado aparte del HP base.** El Training Dummy (`CharacterNames.TrainingDummy`) usa `CombatConstants.TrainingDummyHp` (90) en vez de `CombatConstants.DefaultUnitHp` (60, el que sigue usando el jugador). Motivo: con el arma de entrenamiento (daño base 10, Kinetic vs Light = x1.5 = 15 de daño mínimo por disparo) y 60 HP, el combate terminaba en 4 impactos -- un disparo antes de que la sobrecarga (que requiere 5) pudiera ocurrir. Las bandas Crítica y Sobrecarga existían en el código pero nunca se activaban jugando. Con 90 HP el combate dura 6 impactos, suficiente para recorrer las cuatro bandas de calor y plantearle al jugador la decisión de seguir disparando o enfriarse.
+- **HP del oponente de prueba.** El Training Dummy (`CharacterNames.TrainingDummy`) usa `CombatConstants.TrainingDummyHp`, actualmente **60** -- igual a `CombatConstants.DefaultUnitHp` (60, el que también usa el jugador). La constante se mantiene separada en el código para poder recalibrar al Training Dummy sin tocar el HP de una unidad jugable real, pero hoy no hay diferencia numérica entre ambas. **[abierto]** Una calibración anterior había subido este valor a 90 específicamente para que el combate recorriera las cuatro bandas de calor (Fría/Óptima/Crítica/Sobrecarga) antes de terminar, en vez de cortarse en 4 impactos. Ese cambio fue revertido al valor actual (60) en el commit más reciente del repo, mezclado con trabajo de debugging no relacionado, sin que quede registrada una razón de diseño para el revert -- falta confirmar si el HP de prueba necesita volver a subir ahora que la IA enemiga usa dos acciones por turno (ver punto siguiente) o si el balance ya es aceptable así.
+- **IA enemiga con dos acciones por turno.** El enemigo, igual que el jugador, gasta su acción de movimiento y su acción de ataque en el mismo turno: si ya está a rango, ataca directamente; si no, se acerca por A* y ataca si el movimiento lo dejó a rango (`Mission.RunEnemyTurnAsync`). Motivo: con un enemigo de una sola acción por turno, el jugador podía kitear -- disparar y retroceder fuera de rango antes de que el enemigo pudiera devolver el golpe -- y ganar el combate completo sin recibir daño ni acumular calor propio bajo presión. Eso volvía irrelevante toda la curva de calor, porque el jugador nunca necesitaba arriesgar una banda alta para terminar la pelea. Forzar dos acciones por turno en el enemigo elimina el kiteo como estrategia dominante.
 
 ### 5.4 Sincronización — sistema puente
 
@@ -114,6 +115,15 @@ Reglas:
 - El trasplante también se usa **electivamente** para subir sync (reemplazar tejido cansado por tejido joven).
 
 **Consecuencia jugable:** al protagonista se le puede ofrecer el mismo upgrade como decisión de juego, con costo narrativo real. Los Siete tienen sync altísimo y llevan partes ajenas — legible en su diseño visual.
+
+### 5.5 Testing
+
+Dos smoke tests headless validan la capa pura de combate (sin abrir la misión jugable):
+
+- **`Resources/AttackTest.cs`** -- verifica el sistema de datos: toma una `WeaponData` (asignada como `.tres` en el campo `Weapon` del Inspector) y resuelve un ataque contra un objetivo de prueba, logueando cada efecto aplicado y el HP resultante.
+- **`Resources/HeatCurveTest.cs`** -- verifica la curva de calor completa: progresión ordenada de bandas (Fría → Óptima → Crítica → Sobrecarga) y clamping en `MaxTension`; que el bloqueo por sobrecarga se dispare el turno siguiente y no el mismo turno en que se alcanza el tope; que la disipación de un turno bloqueado use la tasa de "sin acción"; y que atacar en una banda de calor más alta haga más daño que en Fría. Corre **7 chequeos** (no 5) con salida `[PASS]`/`[FAIL]` por consola, todos leyendo sus umbrales desde `CombatConstants` para no romperse si el balance se recalibra.
+
+**Cómo correrlos:** cada uno es un script adjunto a su propia escena `Node2D` (`Scenes/HeatCurveTest.tscn` para el segundo; el primero requiere arrastrar un `WeaponData` al campo `Weapon` en el Inspector). Abrir la escena en el editor de Godot y presionar **F6** (Run Current Scene) corre el test y vuelca el resultado a la consola de salida.
 
 ---
 
@@ -155,8 +165,9 @@ Razones de diseño, no solo de criterio:
 
 ## 8. Próximos pasos
 
-- [ ] Verificar build .NET de Godot y `dotnet --list-sdks`.
-- [ ] Definir modelo de datos: chasis, armas, módulos, efectos.
-- [ ] Prototipar el loop de una misión (grilla, movimiento, un ataque, condición de victoria).
-- [ ] Decidir vista: isométrica vs top-down 3/4.
-- [ ] Definir estilo de retrato y hacer una prueba de personaje completo (retrato + sprite 64px).
+- [x] Verificar build .NET de Godot y `dotnet --list-sdks`.
+- [x] Definir modelo de datos: chasis, armas, módulos, efectos.
+- [x] Prototipar el loop de una misión (grilla, movimiento, un ataque, condición de victoria). Cerrado y ampliado más allá del alcance original del ítem: incluye turnos alternados, IA enemiga de dos acciones y la curva de calor completa -- ver 5.3.
+- [x] Decidir el recurso de tensión y darle mecánica completa (CALOR) -- ver 5.3.
+- [ ] Decidir vista: isométrica vs top-down 3/4. **[abierto]**
+- [ ] Definir estilo de retrato y hacer una prueba de personaje completo (retrato + sprite 64px). **[abierto]**

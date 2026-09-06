@@ -27,16 +27,21 @@ Full narrative bible: `historia_1.md` (Spanish). Full technical/design decisions
 4. **Character names always come from `GameConstants.CharacterNames`.** Never a string literal for a character's name in gameplay code. If a name doesn't exist yet, add a placeholder constant there instead of inlining a string.
 5. **Tunable balance values live in `GameConstants.CombatConstants`.** No magic numbers for damage, range, HP, move range, multipliers, etc. scattered through the code — add a constant.
 6. **All code, comments and identifiers are in English**, even though design docs and team communication are in Spanish.
+7. **Every `Control` node placed over the grid must have `mouse_filter = 2`** (Ignore). The default `Stop` makes it consume the click before `_UnhandledInput` ever fires, which silently breaks all input. This has broken the game twice already.
 
 ## Current project state
 
-- `Resources/` — the pure combat layer: `CombatTypes.cs` (enums), `UnitState.cs` (pure C# unit state, includes `MoveRange`), `Combat.cs` (damage-vs-armor math), `EffectData.cs`/`DamageEffect.cs` (composable effects), `WeaponData.cs` (weapon-as-data, `ResolveAttack` entry point), `GameConstants.cs` (all names/constants), `AttackTest.cs` (headless smoke test for the data system), `Resources/Weapons/TrainingBlaster.tres` (a concrete weapon).
+- `Resources/` — the pure combat layer: `CombatTypes.cs` (enums, including `HeatBand`), `UnitState.cs` (pure C# unit state — HP, `MoveRange`, `Tension`/heat with turn-scoped `CanMove`/`CanAttack`), `Combat.cs` (damage-vs-armor math plus heat-band multipliers), `EffectData.cs`/`DamageEffect.cs` (composable effects), `WeaponData.cs` (weapon-as-data, `ResolveAttack` entry point), `GameConstants.cs` (all names/constants), `Resources/Weapons/TrainingBlaster.tres` (a concrete weapon).
+  - Two headless smoke tests: `AttackTest.cs` (data system — resolve one attack, log the result) and `HeatCurveTest.cs` (full heat curve — band progression, `MaxTension` clamping, overload lock/dissipation, heat damage multiplier; 7 `[PASS]`/`[FAIL]` checks). Each is a script on its own `Node2D` scene, run with F6.
 - `Scenes/` — the Godot presentation/orchestration layer added for the first vertical slice:
-  - `Unit.cs`/`Unit.tscn` — dumb visual wrapper around a combatant (placeholder `ColorRect` + HP `Label`); owns a `UnitState` and its grid `Cell`, nothing else.
-  - `Mission.cs`/`Mission.tscn` — the mission orchestrator; the only place that knows about `TileMapLayer`, `AStarGrid2D`, click-to-select/move/attack, and the placeholder victory condition. Builds an 8x8 grid and its `TileSet` procedurally in code (no art assets yet).
+  - `Unit.cs`/`Unit.tscn` — dumb visual wrapper around a combatant (placeholder `ColorRect` + HP/heat `Label`s); owns a `UnitState` and its grid `Cell`, nothing else.
+  - `Mission.cs`/`Mission.tscn` — the mission orchestrator; the only place that knows about `TileMapLayer`, `AStarGrid2D`, click-to-select/move/attack, alternating player/enemy turns, and victory/defeat. Builds an 8x8 grid and its `TileSet` procedurally in code (no art assets yet). A turn ends when both actions are spent or the player presses Space.
   - `GridHighlight.cs` — paints the reachable-move-cell overlay that `Mission.cs` drives.
   - `Mission.tscn` is set as the project's main scene (`project.godot` → `[run] main_scene`).
-- This is a **single mission, single playable unit vs. one fixed enemy** ("Training Dummy" — a deliberately non-story placeholder opponent, see `GameConstants.CharacterNames.TrainingDummy`; kept separate from `TheSeven` so a real boss slot isn't spent on a test scene). No enemy AI, no turn order, no second chassis, no configuration UI — that's all future scope once the slice proves out.
+- **Turn system and enemy AI:** turns alternate player/enemy, each side getting one move and one attack per turn. The enemy AI takes both actions every turn — if already in weapon range it attacks, otherwise it paths toward the player with `AStarGrid2D` and then attacks if the move brought it into range. This was deliberately built to close a kiting exploit: a single-action enemy let the player win without ever taking damage, making the heat curve irrelevant.
+- **Heat curve (the tension resource):** a full four-band implementation (Cold/Optimal/Critical/Overload) with heat-based offense/defense multipliers and an overload lock that skips the unit's next turn — see `definiciones-tecnicas.md` §5.3 for exact thresholds and multipliers (`GameConstants.CombatConstants`).
+- Movement and attack range both use Manhattan distance, with `AStarGrid2D` set to `DiagonalMode.Never` to match.
+- This is a **single mission, single playable unit vs. one fixed enemy** ("Training Dummy" — a deliberately non-story placeholder opponent, see `GameConstants.CharacterNames.TrainingDummy`; kept separate from `TheSeven` so a real boss slot isn't spent on a test scene). No second chassis, no weapon/module variety, no configuration UI — that's all future scope once the slice proves out.
 
 ## Story summary (see `historia_1.md` for the full document)
 
