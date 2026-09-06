@@ -15,6 +15,10 @@ public static class CharacterNames
 	// Deliberately separate from TheSeven so a real boss slot isn't spent on a test scene.
 	public const string TrainingDummy = "TRAINING_DUMMY_PLACEHOLDER";
 
+	// Second non-story enemy type for the vertical slice (heavier chassis,
+	// harder-hitting weapon). Same rationale as TrainingDummy above.
+	public const string HeavyDrone = "HEAVY_DRONE_PLACEHOLDER";
+
 	// The Seven — placeholder array, one slot per boss.
 	public static readonly string[] TheSeven =
 	{

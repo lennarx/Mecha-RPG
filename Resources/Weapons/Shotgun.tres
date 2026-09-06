@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="WeaponData" format=3]
+
+[ext_resource type="Script" path="res://Resources/WeaponData.cs" id="1"]
+[ext_resource type="Script" path="res://Resources/EffectData.cs" id="1_nmd84"]
+[ext_resource type="Script" path="res://Resources/DamageEffect.cs" id="2"]
+
+[sub_resource type="Resource" id="DamageEffect_1"]
+script = ExtResource("2")
+Amount = 14
+Type = 1
+
+[resource]
+script = ExtResource("1")
+DisplayName = "Shotgun"
+Range = 1
+TensionCost = 3
+Effects = Array[ExtResource("1_nmd84")]([SubResource("DamageEffect_1")])
