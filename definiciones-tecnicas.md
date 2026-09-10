@@ -129,7 +129,7 @@ Dos smoke tests headless validan la capa pura de combate (sin abrir la misión j
 
 ## 6. Arte
 
-- **Vista:** isométrica o top-down 3/4. **[abierto]**
+- **Vista:** top-down 3/4. **[resuelto]** La grilla cartesiana existente no cambia; no hay trabajo de proyección isométrica pendiente.
 - **Sprites:** chicos (48–64px), paleta acotada.
 - **Piezas reusables** por el sistema modular de chasis/armas/módulos.
 - **Retratos de personajes:** es el rubro caro. Busto estático con ~3 expresiones por personaje.
@@ -169,5 +169,5 @@ Razones de diseño, no solo de criterio:
 - [x] Definir modelo de datos: chasis, armas, módulos, efectos.
 - [x] Prototipar el loop de una misión (grilla, movimiento, un ataque, condición de victoria). Cerrado y ampliado más allá del alcance original del ítem: incluye turnos alternados, IA enemiga de dos acciones y la curva de calor completa -- ver 5.3.
 - [x] Decidir el recurso de tensión y darle mecánica completa (CALOR) -- ver 5.3.
-- [ ] Decidir vista: isométrica vs top-down 3/4. **[abierto]**
+- [x] Decidir vista: top-down 3/4 -- ver 6.
 - [ ] Definir estilo de retrato y hacer una prueba de personaje completo (retrato + sprite 64px). **[abierto]**
