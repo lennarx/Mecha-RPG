@@ -63,19 +63,21 @@ public partial class Mission : Node2D
 		var playerChassis = MissionLoadout.PlayerChassis ?? _playerUnit.Chassis;
 		_playerUnit.Weapon = MissionLoadout.PlayerWeapon ?? _playerUnit.Weapon;
 		_playerUnit.State = BuildUnitState(CharacterNames.Protagonist, playerChassis);
+		_playerUnit.MaxHp = playerChassis.Hp;
 		_playerUnit.SetColor(new Color(0.25f, 0.5f, 1f));
 		PlaceUnit(_playerUnit, new Vector2I(1, 6));
 
 		var enemyChassis = MissionLoadout.EnemyChassis ?? _enemyUnit.Chassis;
 		_enemyUnit.Weapon = MissionLoadout.EnemyWeapon ?? _enemyUnit.Weapon;
 		_enemyUnit.State = BuildUnitState(MissionLoadout.EnemyName, enemyChassis);
+		_enemyUnit.MaxHp = enemyChassis.Hp;
 		_enemyUnit.SetColor(new Color(1f, 0.3f, 0.3f));
 		PlaceUnit(_enemyUnit, new Vector2I(6, 1));
 
-		_playerUnit.RefreshHpLabel();
-		_enemyUnit.RefreshHpLabel();
-		_playerUnit.RefreshHeatLabel();
-		_enemyUnit.RefreshHeatLabel();
+		_playerUnit.RefreshHpBar();
+		_enemyUnit.RefreshHpBar();
+		_playerUnit.RefreshHeatBar();
+		_enemyUnit.RefreshHeatBar();
 
 		_victoryLabel.Visible = false;
 
@@ -186,7 +188,7 @@ public partial class Mission : Node2D
 			PlaceUnit(_selected, cell);
 			_selected.State.CanMove = false;
 			_selected.State.Tension += CombatConstants.MoveHeatCost;
-			_selected.RefreshHeatLabel();
+			_selected.RefreshHeatBar();
 			Deselect();
 			UpdateTurnLabel();
 			EndTurnIfPlayerDone();
@@ -238,13 +240,18 @@ public partial class Mission : Node2D
 			return;
 		}
 
+		int hpBefore = _enemyUnit.State.Hp;
 		var log = new List<string>();
 		_selected.Weapon.ResolveAttack(_selected.State, _enemyUnit.State, log);
 		foreach (var line in log)
 			GD.Print(line);
 
-		_enemyUnit.RefreshHpLabel();
-		_selected.RefreshHeatLabel();
+		int damage = hpBefore - _enemyUnit.State.Hp;
+		if (damage > 0)
+			_enemyUnit.ShowFloatingDamage(damage);
+
+		_enemyUnit.RefreshHpBar();
+		_selected.RefreshHeatBar();
 		_selected.State.CanAttack = false;
 		Deselect();
 
@@ -269,6 +276,7 @@ public partial class Mission : Node2D
 		_turn = side;
 		var unit = side == TurnSide.Player ? _playerUnit : _enemyUnit;
 		unit.State.BeginTurn();
+		unit.SetOverloaded(unit.State.IsOverloaded);
 		UpdateTurnLabel();
 
 		if (side == TurnSide.Player)
@@ -315,6 +323,8 @@ public partial class Mission : Node2D
 		Deselect();
 		var endingUnit = _turn == TurnSide.Player ? _playerUnit : _enemyUnit;
 		endingUnit.State.DissipateHeat();
+		endingUnit.RefreshHeatBar();
+		endingUnit.SetOverloaded(endingUnit.State.IsOverloaded);
 		StartTurn(_turn == TurnSide.Player ? TurnSide.Enemy : TurnSide.Player);
 	}
 
@@ -368,7 +378,7 @@ public partial class Mission : Node2D
 			int steps = Mathf.Min(_enemyUnit.State.MoveRange, path.Count - 1);
 			PlaceUnit(_enemyUnit, path[steps]);
 			_enemyUnit.State.Tension += CombatConstants.MoveHeatCost;
-			_enemyUnit.RefreshHeatLabel();
+			_enemyUnit.RefreshHeatBar();
 		}
 
 		_enemyUnit.State.CanMove = false;
@@ -376,13 +386,18 @@ public partial class Mission : Node2D
 
 	private void AttackWithEnemy()
 	{
+		int hpBefore = _playerUnit.State.Hp;
 		var log = new List<string>();
 		_enemyUnit.Weapon.ResolveAttack(_enemyUnit.State, _playerUnit.State, log);
 		foreach (var line in log)
 			GD.Print(line);
 
-		_playerUnit.RefreshHpLabel();
-		_enemyUnit.RefreshHeatLabel();
+		int damage = hpBefore - _playerUnit.State.Hp;
+		if (damage > 0)
+			_playerUnit.ShowFloatingDamage(damage);
+
+		_playerUnit.RefreshHpBar();
+		_enemyUnit.RefreshHeatBar();
 		_enemyUnit.State.CanAttack = false;
 
 		if (_playerUnit.State.Hp <= 0)
