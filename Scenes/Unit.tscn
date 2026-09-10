@@ -13,20 +13,18 @@ offset_bottom = 28.0
 mouse_filter = 2
 color = Color(1, 1, 1, 1)
 
-[node name="HpLabel" type="Label" parent="."]
-offset_left = -20.0
-offset_top = -48.0
-offset_right = 20.0
-offset_bottom = -28.0
+[node name="HpBarBg" type="ColorRect" parent="."]
 mouse_filter = 2
-horizontal_alignment = 1
-text = "0"
+color = Color(0.12, 0.12, 0.14, 0.9)
 
-[node name="HeatLabel" type="Label" parent="."]
-offset_left = -60.0
-offset_top = -68.0
-offset_right = 60.0
-offset_bottom = -48.0
+[node name="HpBarFill" type="ColorRect" parent="."]
 mouse_filter = 2
-horizontal_alignment = 1
-text = "HEAT: 0/10 (Cold)"
+color = Color(0.85, 0.2, 0.2, 1)
+
+[node name="HeatBarBg" type="ColorRect" parent="."]
+mouse_filter = 2
+color = Color(0.12, 0.12, 0.14, 0.9)
+
+[node name="HeatBarFill" type="ColorRect" parent="."]
+mouse_filter = 2
+color = Color(0.55, 0.6, 0.65, 1)
